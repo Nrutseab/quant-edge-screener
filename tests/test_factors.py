@@ -7,7 +7,14 @@ def test_compute_factors():
     # Mock data
     prices = pd.DataFrame(np.random.rand(300, 3), columns=['AAPL', 'GOOG', 'MSFT'])
     fundamentals = pd.DataFrame({'trailingPE': [20, 25, 15]}, index=['AAPL', 'GOOG', 'MSFT'])
-    config = {'factors': {'weights': {'momentum':1, 'earnings_yield':1, 'inv_vol':1}}}
+    # Updated: Full config with required lookback keys
+    config = {
+        'factors': {
+            'momentum_lookback': 252,  # Default 1-year lookback
+            'vol_lookback': 252,       # Default 1-year lookback
+            'weights': {'momentum': 1, 'earnings_yield': 1, 'inv_vol': 1}
+        }
+    }
     
     factors = compute_factors(prices, fundamentals, config)
     assert 'score' in factors.columns
