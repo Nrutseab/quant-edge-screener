@@ -1,5 +1,6 @@
 import backtrader as bt
-from typing import List
+import pandas as pd  # Added for DataFrame type hint
+from typing import List  # Added for List type hint
 import logging
 
 logger = logging.getLogger(__name__)
