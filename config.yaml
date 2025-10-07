@@ -1,0 +1,21 @@
+# Trading Edge Screener Config
+data:
+  start_date: "2020-01-01"
+  end_date: "2025-10-01"  # Update to current
+  universe_size: 50  # S&P 500 subset for speed
+  benchmark: "SPY"
+
+strategy:
+  hold_period: 63  # Days (~3 months)
+  top_holdings: 10  # Diversify
+  allocation_per_holding: 0.1  # 10%
+  transaction_cost: 0.001  # 0.1%
+  slippage: 0.0005  # 0.05%
+
+factors:
+  momentum_lookback: 252  # 1 year
+  vol_lookback: 252
+  weights:  # Equal by default
+    momentum: 1.0
+    earnings_yield: 1.0
+    inv_vol: 1.0
