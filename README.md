@@ -16,7 +16,7 @@ It ranks stocks (e.g., S&P 500 subset), simulates a long-only portfolio (top 10%
 - Jupyter examples for visualization.
 
 ## Quick Start
-1. Clone: `git clone https://github.com/yourusername/quant-edge-screener.git`
+1. Clone: `git clone https://github.com/nrutseab/quant-edge-screener.git`
 2. Install deps: `pip install -r requirements.txt`
 3. Run: `python main.py` (outputs alpha, Sharpe, etc.)
 4. Explore: Open `examples/backtest_notebook.ipynb` in Jupyter.
