@@ -32,11 +32,19 @@ def run_backtest(config: dict):
     data_names = prices.columns.tolist()
     for name in data_names:
         cerebro.adddata(bt.feeds.PandasData(dataname=prices[name], name=name))
-    
-    # Benchmark
-    benchmark_ticker = config['data']['benchmark']
+
+    # Benchmark (with fallback)
+benchmark_ticker = config['data']['benchmark']
+spy_data = None
+try:
     spy_data = yf.download(benchmark_ticker, start=config['data']['start_date'], end=config['data']['end_date'])['Adj Close']
-    cerebro.adddata(bt.feeds.PandasData(dataname=spy_data, name=benchmark_ticker))
+    if spy_data.empty:
+        raise ValueError("SPY empty")
+except Exception as e:
+    logger.warning(f"SPY fetch failed: {e}. Using portfolio average as benchmark.")
+    spy_data = prices.mean(axis=1)  # Mock SPY as equal-weight portfolio
+spy_data.name = benchmark_ticker
+cerebro.adddata(bt.feeds.PandasData(dataname=spy_data, name=benchmark_ticker))
     
     # Strategy
     cerebro.addstrategy(FactorStrategy, factors=factors, data_names=data_names)
