@@ -6,6 +6,9 @@ def compute_factors(prices: pd.DataFrame, fundamentals: pd.DataFrame, config: Di
     """
     Compute and rank factors for edge detection.
     """
+    if prices.empty or len(prices) < config['factors']['momentum_lookback']:
+        raise ValueError(f"Insufficient price data: {len(prices)} rows available")
+    
     factors = pd.DataFrame(index=prices.columns)
     lookback_mom = config['factors']['momentum_lookback']
     lookback_vol = config['factors']['vol_lookback']
@@ -26,7 +29,10 @@ def compute_factors(prices: pd.DataFrame, fundamentals: pd.DataFrame, config: Di
     
     # Z-score normalize & weight
     for col in ['momentum', 'earnings_yield', 'inv_vol']:
-        factors[f'z_{col}'] = (factors[col] - factors[col].mean()) / factors[col].std()
+        if not factors[col].isna().all():
+            factors[f'z_{col}'] = (factors[col] - factors[col].mean()) / factors[col].std()
+        else:
+            factors[f'z_{col}'] = 0  # Neutral if all NaN
     
     factors['score'] = (
         weights['momentum'] * factors['z_momentum'] +
