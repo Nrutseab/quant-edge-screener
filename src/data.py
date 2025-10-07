@@ -4,6 +4,7 @@ from typing import Tuple, Dict
 import logging
 import time
 import os
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +19,7 @@ def get_universe(start_date: str, end_date: str, universe_size: int = 10) -> Tup
         tickers = RELIABLE_TICKERS[:universe_size]
         logger.info(f"Attempting fetch for {len(tickers)} tickers from {start_date} to {end_date}")
         
-        # Prices with retries (no session for simplicity; focus on fallback)
+        # Prices with retries
         prices = None
         for attempt in range(3):
             try:
@@ -36,28 +37,34 @@ def get_universe(start_date: str, end_date: str, universe_size: int = 10) -> Tup
             logger.info("Falling back to mock data for backtest")
             mock_path = os.path.join(os.path.dirname(__file__), '../data/mock_prices.csv')
             if os.path.exists(mock_path):
-                prices = pd.read_csv(mock_path, index_col=0, parse_dates=True)['Adj Close']
+                prices = pd.read_csv(mock_path, index_col=0, parse_dates=True)  # Direct DF, no ['Adj Close']
+                logger.info("Loaded mock CSV")
             else:
-                # Inline minimal mock if CSV missing (for initial runs)
-                dates = pd.date_range(start='2020-01-01', end='2025-10-01', freq='D')
-                np.random.seed(42)  # Reproducible
+                # Inline reproducible mock (daily prices 2020-2025, ~5% annual drift)
+                dates = pd.date_range(start='2020-01-01', end='2025-10-01', freq='B')  # Business days
+                np.random.seed(42)
+                base_prices = {t: 100.0 for t in tickers}
                 mock_data = pd.DataFrame(
                     index=dates,
-                    columns=tickers,
-                    data={t: 100 * np.exp(np.cumsum(np.random.normal(0.0005, 0.02, len(dates)))) for t in tickers}
+                    data={
+                        t: base_prices[t] * np.exp(np.cumsum(np.random.normal(0.0002, 0.015, len(dates)))) 
+                        for t in tickers
+                    }
                 )
-                prices = mock_data['Adj Close']
+                prices = mock_data  # Direct assignment
                 logger.info("Generated inline mock data")
         
         prices = prices.dropna(axis=1, how='all')
+        if prices.empty:
+            raise ValueError("Mock prices are empty after cleaning")
         
-        # Fundamentals: Static realistic defaults (fallback-heavy for CI)
+        # Fundamentals: Static realistic defaults
+        pe_values = [25, 30, 22, 35, 40, 28, 50, 12, 20, 18]  # Varied for factor diversity
         fundamentals = {}
-        pe_values = [25, 30, 22, 35, 40, 28, 50, 12, 20, 18]  # Varied PEs for realism
         for i, ticker in enumerate(prices.columns):
             fundamentals[ticker] = {
                 'trailingPE': pe_values[i % len(pe_values)],
-                'marketCap': 1e12 + i * 1e11  # Plausible variation
+                'marketCap': 1e12 + i * 1e11
             }
         logger.info("Fundamentals loaded (defaults for simulation)")
         
