@@ -3,6 +3,7 @@ import logging
 import pandas as pd
 from datetime import datetime
 import backtrader as bt
+import yfinance as yf  # Lazy import for main
 from src.data import get_universe
 from src.factors import compute_factors
 from src.strategy import FactorStrategy
@@ -32,19 +33,20 @@ def run_backtest(config: dict):
     data_names = prices.columns.tolist()
     for name in data_names:
         cerebro.adddata(bt.feeds.PandasData(dataname=prices[name], name=name))
-
+    
     # Benchmark (with fallback)
-benchmark_ticker = config['data']['benchmark']
-spy_data = None
-try:
-    spy_data = yf.download(benchmark_ticker, start=config['data']['start_date'], end=config['data']['end_date'])['Adj Close']
-    if spy_data.empty:
-        raise ValueError("SPY empty")
-except Exception as e:
-    logger.warning(f"SPY fetch failed: {e}. Using portfolio average as benchmark.")
-    spy_data = prices.mean(axis=1)  # Mock SPY as equal-weight portfolio
-spy_data.name = benchmark_ticker
-cerebro.adddata(bt.feeds.PandasData(dataname=spy_data, name=benchmark_ticker))
+    benchmark_ticker = config['data']['benchmark']
+    spy_data = None
+    try:
+        spy_data = yf.download(benchmark_ticker, start=config['data']['start_date'], end=config['data']['end_date'])['Adj Close']
+        if spy_data.empty:
+            raise ValueError("SPY data empty")
+        logger.info("Live SPY benchmark fetched")
+    except Exception as e:
+        logger.warning(f"SPY fetch failed: {e}. Using portfolio average as benchmark.")
+        spy_data = prices.mean(axis=1)
+    spy_data.name = benchmark_ticker
+    cerebro.adddata(bt.feeds.PandasData(dataname=spy_data, name=benchmark_ticker))
     
     # Strategy
     cerebro.addstrategy(FactorStrategy, factors=factors, data_names=data_names)
@@ -80,12 +82,11 @@ cerebro.adddata(bt.feeds.PandasData(dataname=spy_data, name=benchmark_ticker))
     logger.info(f"Max Drawdown: {max_dd:.2f}%")
     logger.info(f"Alpha vs. {benchmark_ticker}: {alpha:.2%}")
     
-    # Plot (optional)
+    # Plot (optional; comment out for CI)
     # cerebro.plot(style='candlestick')
     
     return results
 
 if __name__ == "__main__":
-    import yfinance as yf  # Lazy import for main
     config = load_config()
     run_backtest(config)
