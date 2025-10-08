@@ -3,7 +3,7 @@ import logging
 import pandas as pd
 from datetime import datetime
 import backtrader as bt
-import yfinance as yf  # Lazy import for main
+import yfinance as yf
 from src.data import get_universe
 from src.factors import compute_factors
 from src.strategy import FactorStrategy
@@ -32,7 +32,9 @@ def run_backtest(config: dict):
     cerebro = bt.Cerebro()
     data_names = prices.columns.tolist()
     for name in data_names:
-        cerebro.adddata(bt.feeds.PandasData(dataname=prices[name], name=name))
+        # Wrap Series in DataFrame for Backtrader
+        data_df = pd.DataFrame({ 'Close': prices[name] })
+        cerebro.adddata(bt.feeds.PandasData(dataname=data_df, name=name))
     
     # Benchmark (with fallback)
     benchmark_ticker = config['data']['benchmark']
@@ -46,12 +48,14 @@ def run_backtest(config: dict):
         logger.warning(f"SPY fetch failed: {e}. Using portfolio average as benchmark.")
         spy_data = prices.mean(axis=1)
     spy_data.name = benchmark_ticker
-    cerebro.adddata(bt.feeds.PandasData(dataname=spy_data, name=benchmark_ticker))
+    # Wrap SPY in DataFrame
+    spy_df = pd.DataFrame({ 'Close': spy_data })
+    cerebro.adddata(bt.feeds.PandasData(dataname=spy_df, name=benchmark_ticker))
     
     # Strategy
     cerebro.addstrategy(FactorStrategy, factors=factors, data_names=data_names)
     
-    # Broker settings (realism)
+    # Broker settings
     cerebro.broker.setcash(100000)
     cerebro.broker.setcommission(commission=config['strategy']['transaction_cost'])
     cerebro.broker.set_slippage_perc(config['strategy']['slippage'])
